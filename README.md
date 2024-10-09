@@ -1,65 +1,72 @@
-# join-text-with-operator README
+# Join Text with Operator - VS Code Extension
 
-This is the README for your extension "join-text-with-operator". After writing up a brief description, we recommend including the following sections.
+This Visual Studio Code extension allows you to join selected text at multiple cursor positions using a customizable operator, with the result being copied to the clipboard.
+
+By default, the `::` operator is used to join the text, but you can customize the operator to suit your needs through the VS Code settings.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- **Join selected text** at multiple cursor positions with a user-defined operator.
+- **Copy the joined text** directly to your clipboard for easy pasting.
+- **Customizable operator**: Set your own operator in the VS Code settings, or fall back to the default (`::`).
 
-For example if there is an image subfolder under your extension project workspace:
+## Usage
 
-\!\[feature X\]\(images/feature-x.png\)
+1. **Select multiple pieces of text** in your editor (either with multiple cursors or by selecting text across multiple lines).
+2. **Run the command** using:
+   - **Keyboard shortcut**: Press `Ctrl + Shift + J` to join the text with the default or custom operator.
+   - **Command Palette**: Open the Command Palette (`Ctrl + Shift + P`) and search for "Join Text with Operator".
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+The selected text will be joined with your specified operator (or `::` if no operator is defined) and automatically copied to your clipboard.
 
-## Requirements
+### Example
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+If you have selected:
 
-## Extension Settings
+```
+foo
+bar
+baz
+```
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+And you are using the default `::` operator, the result will be:
+
+```
+foo::bar::baz
+```
+
+This result will be copied to your clipboard for easy use.
+
+## Configuration
+
+You can customize the operator used to join the text via the VS Code settings.
+
+1. Open your VS Code `settings.json` file.
+2. Add or modify the `joinTextWithOperator.operator` setting to your desired operator.
 
 For example:
 
-This extension contributes the following settings:
+```json
+{
+  "joinTextWithOperator.operator": "&&"
+}
+```
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+This will join your selected text with `&&` instead of the default `::`.
 
-## Known Issues
+## Installation
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+1. Clone or download this repository.
+2. Open the folder in Visual Studio Code.
+3. Press `F5` to run and debug the extension.
+4. You can also publish it to the VS Code Marketplace if desired.
 
-## Release Notes
+## Keyboard Shortcuts
 
-Users appreciate release notes as you update your extension.
+The default keybinding is:
 
-### 1.0.0
+- **Ctrl + Shift + J**: Joins the selected text with the defined operator and copies it to the clipboard.
 
-Initial release of ...
+## Contributing
 
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code.  Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux)
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux)
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+Feel free to submit issues and pull requests for additional features or improvements.
