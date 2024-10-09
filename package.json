@@ -1,7 +1,7 @@
 {
-  "name": "copy-ruby-namespace",
-  "displayName": "Copy Ruby Namespace",
-  "description": "It joins the selected namespaces with ::",
+  "name": "join-text-with-operator",
+  "displayName": "Join Text With Operator",
+  "description": "It joins the selected texts with operator (:: by default)",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.94.0"

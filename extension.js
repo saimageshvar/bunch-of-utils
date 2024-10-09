@@ -10,7 +10,7 @@ const vscode = require('vscode');
  */
 function activate(context) {
 
-	console.log('Congratulations, your extension "copy-ruby-namespace" is now active!');
+	console.log('Congratulations, your extension "join-text-with-operator" is now active!');
 	let disposable = vscode.commands.registerCommand('extension.joinTextWithOperator', function () {
 		const editor = vscode.window.activeTextEditor;
 

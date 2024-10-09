@@ -1,6 +1,6 @@
-# copy-ruby-namespace README
+# join-text-with-operator README
 
-This is the README for your extension "copy-ruby-namespace". After writing up a brief description, we recommend including the following sections.
+This is the README for your extension "join-text-with-operator". After writing up a brief description, we recommend including the following sections.
 
 ## Features
 
