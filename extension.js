@@ -11,7 +11,12 @@ const vscode = require('vscode');
 function activate(context) {
 
 	console.log('Congratulations, your extension "join-text-with-operator" is now active!');
-	let disposable = vscode.commands.registerCommand('extension.joinTextWithOperator', function () {
+	context.subscriptions.push(joinTextWithOperatorCommand());
+	context.subscriptions.push(propToTemplateLiteralCommand());
+}
+
+const joinTextWithOperatorCommand = () => {
+	return vscode.commands.registerCommand('extension.joinTextWithOperator', function () {
 		const editor = vscode.window.activeTextEditor;
 
 		if (editor) {
@@ -39,9 +44,33 @@ function activate(context) {
 			});
 		}
 	});
-	context.subscriptions.push(disposable);
+};
 
+const propToTemplateLiteralCommand = () => {
+	return vscode.commands.registerCommand('extension.propToTemplateLiteral', function () {
+		const editor = vscode.window.activeTextEditor;
 
+		if (editor) {
+			const document = editor.document;
+			const selections = editor.selections;  // Handle multiple selections
+			const anyPropRegex = /([a-zA-Z0-9_-]+)="([^"]*)"/g;  // Global regex to match all props
+
+			// Perform all edits within one `edit` action
+			editor.edit(editBuilder => {
+				selections.forEach(selection => {
+					const selectedText = document.getText(selection);
+
+					// Transform all props in the selected text using the global regex
+					const newText = selectedText.replace(anyPropRegex, (match, propName, propValue) => {
+						return `${propName}={\`${propValue}\`}`;
+					});
+
+					// Replacing the entire selected block with the transformed text
+					editBuilder.replace(selection, newText);
+				});
+			});
+		}
+	});
 }
 
 // This method is called when your extension is deactivated

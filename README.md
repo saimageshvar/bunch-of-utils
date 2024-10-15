@@ -54,6 +54,14 @@ For example:
 
 This will join your selected text with `&&` instead of the default `::`.
 
+## Add-on Feature :P
+
+This VS Code extension allows you to transform JSX/HTML-like properties from propName="value" format into propName={value} format. It works for multiple selections and handles multiple props within a single selection, making it ideal for React developers who need to refactor JSX attributes into template literals.
+
+- **Transform Any Property**: Automatically convert any prop with string values from propName="value" to propName={value}.
+- **Multiple Selections**: Works with multiple selections at the same time.
+- **Multiple Props in a Block**: Transforms all matching props within the selected block.
+
 ## Installation
 
 1. Clone or download this repository.

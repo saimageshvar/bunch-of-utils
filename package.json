@@ -17,6 +17,10 @@
       {
         "command": "extension.joinTextWithOperator",
         "title": "Join Text with Operator"
+      },
+      {
+        "command": "extension.propToTemplateLiteral",
+        "title": "Prop to Template Literal"
       }
     ],
     "keybindings": [
