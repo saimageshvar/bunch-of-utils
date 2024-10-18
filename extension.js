@@ -53,7 +53,7 @@ const propToTemplateLiteralCommand = () => {
 		if (editor) {
 			const document = editor.document;
 			const selections = editor.selections;  // Handle multiple selections
-			const anyPropRegex = /([a-zA-Z0-9_-]+)="([^"]*)"/g;  // Global regex to match all props
+			const anyPropRegex = /([a-zA-Z0-9_-]+)=(['"])(.*?)\2/g;  // Match propName='value' or propName="value"
 
 			// Perform all edits within one `edit` action
 			editor.edit(editBuilder => {
@@ -61,7 +61,7 @@ const propToTemplateLiteralCommand = () => {
 					const selectedText = document.getText(selection);
 
 					// Transform all props in the selected text using the global regex
-					const newText = selectedText.replace(anyPropRegex, (match, propName, propValue) => {
+					const newText = selectedText.replace(anyPropRegex, (match, propName, quoteType, propValue) => {
 						return `${propName}={\`${propValue}\`}`;
 					});
 
