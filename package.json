@@ -2,7 +2,7 @@
   "name": "join-text-with-operator",
   "displayName": "Join Text With Operator",
   "description": "It joins the selected texts with operator (:: by default)",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "repository": "https://github.com/saimageshvar/join-text-with-operator",
   "engines": {
     "vscode": "^1.94.0"
