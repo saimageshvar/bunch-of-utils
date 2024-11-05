@@ -10,39 +10,34 @@ const vscode = require('vscode');
  */
 function activate(context) {
 
-	console.log('Congratulations, your extension "join-text-with-operator" is now active!');
+	console.log('Congratulations, your extension "bunch-of-utils" is now active!');
 	context.subscriptions.push(joinTextWithOperatorCommand());
+	context.subscriptions.push(joinTextWithCustomOperatorCommand());
 	context.subscriptions.push(propToTemplateLiteralCommand());
 }
 
 const joinTextWithOperatorCommand = () => {
 	return vscode.commands.registerCommand('extension.joinTextWithOperator', function () {
-		const editor = vscode.window.activeTextEditor;
+		joinSelectedText();
+	});
+};
 
-		if (editor) {
-			const selections = editor.selections;
-			let selectedTexts = [];
-
-			// Fetch the custom operator from settings, fallback to "::" if not set
-			const config = vscode.workspace.getConfiguration('joinTextWithOperator');
-			const operator = config.get('operator') || '::';
-
-			// Gather all selected text
-			selections.forEach(selection => {
-				const text = editor.document.getText(selection);
-				if (text) {
-					selectedTexts.push(text);
-				}
-			});
-
-			// Join the selected texts with the custom operator
-			const joinedText = selectedTexts.join(operator);
-
-			// Copy the joined text to the clipboard
-			vscode.env.clipboard.writeText(joinedText).then(() => {
-				vscode.window.showInformationMessage(`Joined text copied to clipboard with operator "${operator}"!`);
-			});
-		}
+const joinTextWithCustomOperatorCommand = () => {
+	return vscode.commands.registerCommand('extension.joinTextWithCustomOperator', function () {
+		vscode.window.showInputBox({
+			prompt: "Enter the operator to join the selected text",
+			placeHolder: "::"
+		}).then(operator => {
+			// If the user didn't enter an operator, use "::" as default
+			if (operator === undefined) {
+				vscode.window.showErrorMessage("No operator entered, operation cancelled.");
+				return;
+			}
+			if (operator === "") {
+				operator = "::";
+			}
+			joinSelectedText(operator);
+		});
 	});
 };
 
@@ -53,15 +48,15 @@ const propToTemplateLiteralCommand = () => {
 		if (editor) {
 			const document = editor.document;
 			const selections = editor.selections;  // Handle multiple selections
-			const anyPropRegex = /([a-zA-Z0-9_-]+)=(['"])(.*?)\2/g;  // Match propName='value' or propName="value"
+			const anyPropRegex = /([a-zA-Z0-9_-]+)\s*=\s*(?:(['"])(.*?)\2|\{\s*(['"])(.*?)\4\s*\})/g;  // Match propName='value' or propName="value" or propName={"value"}
 
 			// Perform all edits within one `edit` action
 			editor.edit(editBuilder => {
 				selections.forEach(selection => {
 					const selectedText = document.getText(selection);
-
-					// Transform all props in the selected text using the global regex
-					const newText = selectedText.replace(anyPropRegex, (match, propName, quoteType, propValue) => {
+					const newText = selectedText.replace(anyPropRegex, (match, propName, quoteType1, propValue1, quoteType2, propValue2) => {
+						// Choose the prop value based on the matched pattern
+						const propValue = propValue1 || propValue2;  // Will get `propValue1` if matched with quotes, `propValue2` if matched with curly braces
 						return `${propName}={\`${propValue}\`}`;
 					});
 
@@ -71,6 +66,37 @@ const propToTemplateLiteralCommand = () => {
 			});
 		}
 	});
+};
+
+const joinSelectedText = (operator) => {
+	const editor = vscode.window.activeTextEditor;
+
+	if (editor) {
+		const selections = editor.selections;
+		let selectedTexts = [];
+
+		if (!operator) {
+			// Fetch the custom operator from settings, fallback to "::" if not set
+			const config = vscode.workspace.getConfiguration('joinTextWithOperator');
+			operator = config.get('operator') || '::';
+		}
+
+		// Gather all selected text
+		selections.forEach(selection => {
+			const text = editor.document.getText(selection);
+			if (text) {
+				selectedTexts.push(text);
+			}
+		});
+
+		// Join the selected texts with the custom operator
+		const joinedText = selectedTexts.join(operator);
+
+		// Copy the joined text to the clipboard
+		vscode.env.clipboard.writeText(joinedText).then(() => {
+			vscode.window.showInformationMessage(`Joined text copied to clipboard with operator "${operator}"!`);
+		});
+	}
 }
 
 // This method is called when your extension is deactivated

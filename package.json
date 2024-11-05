@@ -1,9 +1,9 @@
 {
-  "name": "join-text-with-operator",
-  "displayName": "Join Text With Operator",
-  "description": "It joins the selected texts with operator (:: by default)",
+  "name": "bunch-of-utils",
+  "displayName": "Bunch of Utils",
+  "description": "It has a bunch of utils to make your development easier",
   "version": "1.1.0",
-  "repository": "https://github.com/saimageshvar/join-text-with-operator",
+  "repository": "https://github.com/saimageshvar/bunch-of-utils",
   "engines": {
     "vscode": "^1.94.0"
   },
@@ -17,6 +17,10 @@
       {
         "command": "extension.joinTextWithOperator",
         "title": "Join Text with Operator"
+      },
+      {
+        "command": "extension.joinTextWithCustomOperator",
+        "title": "Join Text with Custom Operator"
       },
       {
         "command": "extension.propToTemplateLiteral",
