@@ -2,7 +2,7 @@
   "name": "bunch-of-utils",
   "displayName": "Bunch of Utils",
   "description": "It has a bunch of utils to make your development easier",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "repository": "https://github.com/saimageshvar/bunch-of-utils",
   "publisher": "SaiMageshvar",
   "engines": {
