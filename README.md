@@ -1,16 +1,17 @@
-# Join Text with Operator - VS Code Extension
+# Bunch of Utils - VS Code Extension
 
-This Visual Studio Code extension allows you to join selected text at multiple cursor positions using a customizable operator, with the result being copied to the clipboard.
-
-By default, the `::` operator is used to join the text, but you can customize the operator to suit your needs through the VS Code settings.
+This Visual Studio Code extension provides a set of utilities to enhance your development workflow. It includes commands to join selected text with a customizable operator and to transform JSX/HTML-like properties into template literals.
 
 ## Features
 
 - **Join selected text** at multiple cursor positions with a user-defined operator.
 - **Copy the joined text** directly to your clipboard for easy pasting.
 - **Customizable operator**: Set your own operator in the VS Code settings, or fall back to the default (`::`).
+- **Transform JSX/HTML-like properties** from `propName="value"` format into `propName={value}` format.
 
 ## Usage
+
+### Join Text with Operator
 
 1. **Select multiple pieces of text** in your editor (either with multiple cursors or by selecting text across multiple lines).
 2. **Run the command** using:
@@ -19,7 +20,7 @@ By default, the `::` operator is used to join the text, but you can customize th
 
 The selected text will be joined with your specified operator (or `::` if no operator is defined) and automatically copied to your clipboard.
 
-### Example
+#### Example
 
 If you have selected:
 
@@ -37,6 +38,14 @@ foo::bar::baz
 
 This result will be copied to your clipboard for easy use.
 
+### Transform JSX/HTML-like Properties
+
+This VS Code extension allows you to transform JSX/HTML-like properties from `propName="value"` format into `propName={value}` format. It works for multiple selections and handles multiple props within a single selection, making it ideal for React developers who need to refactor JSX attributes into template literals.
+
+- **Transform Any Property**: Automatically convert any prop with string values from `propName="value"` to `propName={value}`.
+- **Multiple Selections**: Works with multiple selections at the same time.
+- **Multiple Props in a Block**: Transforms all matching props within the selected block.
+
 ## Configuration
 
 You can customize the operator used to join the text via the VS Code settings.
@@ -53,14 +62,6 @@ For example:
 ```
 
 This will join your selected text with `&&` instead of the default `::`.
-
-## Add-on Feature :P
-
-This VS Code extension allows you to transform JSX/HTML-like properties from propName="value" format into propName={value} format. It works for multiple selections and handles multiple props within a single selection, making it ideal for React developers who need to refactor JSX attributes into template literals.
-
-- **Transform Any Property**: Automatically convert any prop with string values from propName="value" to propName={value}.
-- **Multiple Selections**: Works with multiple selections at the same time.
-- **Multiple Props in a Block**: Transforms all matching props within the selected block.
 
 ## Installation
 
