@@ -4,6 +4,7 @@
   "description": "It has a bunch of utils to make your development easier",
   "version": "2.0.0",
   "repository": "https://github.com/saimageshvar/bunch-of-utils",
+  "publisher": "SaiMageshvar",
   "engines": {
     "vscode": "^1.94.0"
   },
