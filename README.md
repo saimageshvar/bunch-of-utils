@@ -1,3 +1,4 @@
+
 # Bunch of Utils - VS Code Extension
 
 This Visual Studio Code extension provides a set of utilities to enhance your development workflow. It includes commands to join selected text with a customizable operator and to transform JSX/HTML-like properties into template literals.
@@ -12,6 +13,9 @@ This Visual Studio Code extension provides a set of utilities to enhance your de
 ## Usage
 
 ### Join Text with Operator
+#### Commands
+- Join Text with Operator
+- Join Text with Custom Operator
 
 1. **Select multiple pieces of text** in your editor (either with multiple cursors or by selecting text across multiple lines).
 2. **Run the command** using:
@@ -39,10 +43,12 @@ foo::bar::baz
 This result will be copied to your clipboard for easy use.
 
 ### Transform JSX/HTML-like Properties
+#### Command: Prop to Template Literal
 
 This VS Code extension allows you to transform JSX/HTML-like properties from `propName="value"` format into `propName={value}` format. It works for multiple selections and handles multiple props within a single selection, making it ideal for React developers who need to refactor JSX attributes into template literals.
 
-- **Transform Any Property**: Automatically convert any prop with string values from `propName="value"` to `propName={value}`.
+- **Transform Any Property**: Automatically convert any prop with string values from **propName="value"** to **propName={\`value\`}**.
+- This is specifically useful when you are changing your string type prop value to interpolated text
 - **Multiple Selections**: Works with multiple selections at the same time.
 - **Multiple Props in a Block**: Transforms all matching props within the selected block.
 
