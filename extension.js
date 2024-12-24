@@ -11,9 +11,62 @@ const vscode = require('vscode');
 function activate(context) {
 
 	console.log('Congratulations, your extension "bunch-of-utils" is now active!');
+	context.subscriptions.push(copyTestLineNumbers());
 	context.subscriptions.push(joinTextWithOperatorCommand());
 	context.subscriptions.push(joinTextWithCustomOperatorCommand());
 	context.subscriptions.push(propToTemplateLiteralCommand());
+}
+
+const copyTestLineNumbers = () => {
+	return vscode.commands.registerCommand('extension.copyTestLineNumbers', function () {
+		const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      return; // Exit if no active editor
+    }
+
+    const document = editor.document;
+    const lines = document.getText().split('\n');
+    const testMethodLines = [];
+    const selections = editor.selections;
+
+    for (const selection of selections) {
+      const cursorPosition = selection.active.line;
+      let foundMatch = false;
+
+      if (document.languageId === 'ruby') {
+        for (let i = cursorPosition; i >= 0; i--) {
+          if (lines[i].trim().startsWith('def test_')) {
+            testMethodLines.push(i + 1); // Add 1 to get the line number
+            foundMatch = true;
+            break;
+          }
+        }
+      } else if (document.fileName.endsWith('.feature')) {
+        for (let i = cursorPosition; i >= 0; i--) {
+          if (lines[i].trim().startsWith('Scenario:')) {
+            testMethodLines.push(i + 1); // Add 1 to get the line number
+            foundMatch = true;
+            break;
+          }
+        }
+      }
+
+      if (!foundMatch) {
+        testMethodLines.push(-1); // Indicate no match found
+      }
+    }
+
+    const uniqueLineNumbers = new Set(testMethodLines.filter(line => line !== -1));
+    const sortedLineNumbers = Array.from(uniqueLineNumbers).sort((a, b) => a - b);
+
+    if (uniqueLineNumbers.size > 0) {
+			const formattedLineNumbers = `${vscode.workspace.asRelativePath(document.fileName)}:${sortedLineNumbers.join(':')}`;
+      vscode.env.clipboard.writeText(formattedLineNumbers);
+      vscode.window.showInformationMessage(`Copied: ${formattedLineNumbers}`);
+    } else {
+      vscode.window.showInformationMessage('No matching lines found above the current cursor position.');
+    }
+	});
 }
 
 const joinTextWithOperatorCommand = () => {

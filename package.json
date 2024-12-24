@@ -26,6 +26,10 @@
       {
         "command": "extension.propToTemplateLiteral",
         "title": "Prop to Template Literal"
+      },
+      {
+        "command": "extension.copyTestLineNumbers",
+        "title": "Copy Test Line Numbers"
       }
     ],
     "keybindings": [
