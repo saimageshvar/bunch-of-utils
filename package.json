@@ -30,6 +30,10 @@
       {
         "command": "extension.copyTestLineNumbers",
         "title": "Copy Test Line Numbers"
+      },
+      {
+        "command": "extension.runSelectedTests",
+        "title": "Run Selected Tests/Scenarios"
       }
     ],
     "keybindings": [
@@ -41,12 +45,22 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "Join Text Settings",
+      "title": "Bunch of Utils Settings",
       "properties": {
         "joinTextWithOperator.operator": {
           "type": "string",
           "default": "::",
           "description": "The operator to use when joining selected text"
+        },
+        "runSelectedTests.testFileCommand": {
+          "type": "string",
+          "default": "rails test",
+          "description": "The custom command to run for minitest files"
+        },
+        "runSelectedTests.featureFileCommand": {
+          "type": "string",
+          "default": "cucumber",
+          "description": "The custom command to run for feature files"
         }
       }
     }
