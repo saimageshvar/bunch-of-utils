@@ -34,6 +34,22 @@
       {
         "command": "extension.runSelectedTests",
         "title": "Run Selected Tests/Scenarios"
+      },
+      {
+        "command": "extension.startWorkTracking",
+        "title": "Start Work Tracking"
+      },
+      {
+        "command": "extension.stopWorkTracking",
+        "title": "Stop Work Tracking"
+      },
+      {
+        "command": "extension.openWorkLog",
+        "title": "Open Work Log"
+      },
+      {
+        "command": "extension.workTrackingStatus",
+        "title": "Work Tracking Status"
       }
     ],
     "keybindings": [
@@ -41,6 +57,16 @@
         "command": "extension.joinTextWithOperator",
         "key": "ctrl+shift+j",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.startWorkTracking",
+        "key": "ctrl+shift+w",
+        "when": "!workTrackingActive"
+      },
+      {
+        "command": "extension.stopWorkTracking",
+        "key": "ctrl+shift+s",
+        "when": "workTrackingActive"
       }
     ],
     "configuration": {
@@ -61,6 +87,37 @@
           "type": "string",
           "default": "cucumber",
           "description": "The custom command to run for feature files"
+        },
+        "workTracker.trackingInterval": {
+          "type": "number",
+          "default": 300,
+          "description": "Interval in seconds to track work activity (default: 5 minutes)"
+        },
+        "workTracker.logFilePath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom path for the work log file (leave empty for default workspace .vscode folder)"
+        },
+        "workTracker.trackBranch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Track current git branch"
+        },
+        "workTracker.trackActiveFile": {
+          "type": "boolean",
+          "default": true,
+          "description": "Track currently active file"
+        },
+        "workTracker.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start work tracking when extension activates"
+        },
+        "workTracker.logFormat": {
+          "type": "string",
+          "enum": ["text", "json", "csv"],
+          "default": "text",
+          "description": "Format for the work log file (text, json, or csv)"
         }
       }
     }

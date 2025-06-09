@@ -9,6 +9,8 @@ This Visual Studio Code extension provides a set of utilities to enhance your de
 - **Copy the joined text** directly to your clipboard for easy pasting.
 - **Customizable operator**: Set your own operator in the VS Code settings, or fall back to the default (`::`).
 - **Transform JSX/HTML-like properties** from `propName="value"` format into `propName={value}` format.
+- **Work tracking**: Track your development activity including git branches and active files at regular intervals.
+- **Copy and run test line numbers**: Extract test method line numbers and run specific tests.
 
 ## Usage
 
