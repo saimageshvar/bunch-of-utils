@@ -2,7 +2,7 @@
   "name": "bunch-of-utils",
   "displayName": "Bunch of Utils",
   "description": "It has a bunch of utils to make your development easier",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "repository": "https://github.com/saimageshvar/bunch-of-utils",
   "publisher": "SaiMageshvar",
   "icon": "icon.png",
@@ -116,7 +116,11 @@
         },
         "workTracker.logFormat": {
           "type": "string",
-          "enum": ["text", "json", "csv"],
+          "enum": [
+            "text",
+            "json",
+            "csv"
+          ],
           "default": "text",
           "description": "Format for the work log file (text, json, or csv)"
         }
