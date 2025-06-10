@@ -1,10 +1,11 @@
 {
   "name": "bunch-of-utils",
   "displayName": "Bunch of Utils",
-  "description": "A comprehensive development utility extension with work tracking, test helpers, and text manipulation tools",
-  "version": "3.0.0",
+  "description": "It has a bunch of utils to make your development easier",
+  "version": "2.3.0",
   "repository": "https://github.com/saimageshvar/bunch-of-utils",
   "publisher": "SaiMageshvar",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.94.0"
   },
