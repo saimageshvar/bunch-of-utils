@@ -6,7 +6,7 @@
 
 **Supercharge your development workflow with a comprehensive collection of productivity utilities!**
 
-This powerful VS Code extension provides essential tools for developers working with text manipulation, testing, JSX/React development, and work activity tracking. Designed to save time and boost productivity across multiple programming languages and frameworks.
+This powerful VS Code extension provides essential tools for developers working with text manipulation, testing, JSX/React development. Designed to save time and boost productivity across multiple programming languages and frameworks.
 
 [![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](https://github.com/saimageshvar/bunch-of-utils)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.94.0+-brightgreen.svg)](https://code.visualstudio.com/)
@@ -16,13 +16,11 @@ This powerful VS Code extension provides essential tools for developers working 
 
 ## ✨ Features at a Glance
 
-| 🎯 **Text Manipulation** | 🧪 **Testing Tools** | ⚛️ **React/JSX** | 📊 **Work Tracking** | 📝 **Notes System** |
-|:------------------------:|:--------------------:|:----------------:|:--------------------:|:-------------------:|
-| Join selected text with custom operators | Copy & run test line numbers | Transform props to template literals | Track git branches & active files | Save, view, and manage notes |
-| Multiple cursor support | Ruby & Cucumber support | Multiple selections | Multiple log formats | Notes tree view in sidebar |
-| Configurable separators | Auto-terminal execution | Batch transformations | Auto-start capability | Grouped by creation date |
-|                         |                        |                   |                      | Open/delete notes from view |
-
+| 🎯 **Text Manipulation** | 🧪 **Testing Tools** | ⚛️ **React/JSX** | �📝 **Notes System** |
+|:------------------------:|:--------------------:|:----------------:|:--------------------:
+| Join selected text with custom operators | Copy & run test line numbers | Transform props to template literals | Save, view, and manage notes |
+| Multiple cursor support | Ruby & Cucumber support | Multiple selections | Open/delete notes from view
+| Configurable separators | Auto-terminal execution | Batch transformations |
 ---
 
 ## 🚀 Quick Start
@@ -35,8 +33,6 @@ This powerful VS Code extension provides essential tools for developers working 
 | Command | Keyboard Shortcut | Description |
 |---------|------------------|-------------|
 | **Join Text with Operator** | `Ctrl+Shift+J` | Join selected text with custom separator |
-| **Start Work Tracking** | `Ctrl+Shift+W` | Begin activity tracking |
-| **Stop Work Tracking** | `Ctrl+Shift+S` | End activity tracking |
 | **Save Untitled Note** | *(none)* | Save a new unsaved file to your notes directory |
 | **Refresh Notes View** | *(none)* | Refresh the notes tree view |
 | **Open Note** | *(none)* | Open a note from the notes view |
@@ -143,62 +139,6 @@ features/login.feature:12:25
 
 ---
 
-### 📊 Work Activity Tracking
-
-#### **Comprehensive Work Analytics**
-Monitor your development activity with detailed logging and multiple export formats.
-
-**What Gets Tracked:**
-- 🌿 **Git Branch**: Current working branch
-- 📁 **Active File**: Currently focused file with line/column
-- ⏰ **Timestamps**: Both ISO and local formats
-- 🏢 **Workspace**: Current project context
-
-**Log Formats:**
-| Format | Extension | Use Case |
-|--------|-----------|----------|
-| **Text** | `.txt` | Human-readable logs |
-| **JSON Lines** | `.jsonl` | Data analysis & processing |
-| **CSV** | `.csv` | Spreadsheet import & analysis |
-
-**Example Output:**
-
-**Text Format:**
-```
-[6/9/2025, 2:30:15 PM]
-  Branch: feature/user-authentication
-  Active File: src/auth/login.js (Line: 42, Col: 18)
-  Workspace: my-awesome-project
-```
-
-**JSON Lines Format:**
-```json
-{"timestamp":"2025-06-09T14:30:15.123Z","branch":"feature/user-authentication","fileName":"src/auth/login.js","line":42,"column":18,"workspace":"my-awesome-project"}
-```
-
-**CSV Format:**
-```csv
-timestamp,branch,fileName,line,column,workspace
-2025-06-09T14:30:15.123Z,feature/user-authentication,src/auth/login.js,42,18,my-awesome-project
-```
-
-**Commands:**
-- `Start Work Tracking` - Begin activity monitoring
-- `Stop Work Tracking` - End monitoring session
-- `Work Tracking Status` - View current tracking state
-- `Open Work Log` - View generated logs
-
-**✨ Features:**
-- ✅ Configurable tracking intervals (default: 5 minutes)
-- ✅ Auto-start on extension activation
-- ✅ Multiple export formats
-- ✅ Custom log file paths
-- ✅ Selective tracking options
-- ✅ Git integration
-- ✅ Workspace detection
-
----
-
 ### 📝 Notes System
 
 #### **Save and Organize Notes**
@@ -242,18 +182,6 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 }
 ```
 
-#### **Work Tracking Settings**
-```json
-{
-  "workTracker.trackingInterval": 300,
-  "workTracker.logFilePath": "",
-  "workTracker.trackBranch": true,
-  "workTracker.trackActiveFile": true,
-  "workTracker.autoStart": false,
-  "workTracker.logFormat": "text"
-}
-```
-
 #### **Notes System**
 ```json
 {
@@ -270,12 +198,6 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 | `joinTextWithOperator.operator` | string | `::` | Default operator for joining text |
 | `runSelectedTests.testFileCommand` | string | `rails test` | Command for Ruby test files |
 | `runSelectedTests.featureFileCommand` | string | `cucumber` | Command for Cucumber features |
-| `workTracker.trackingInterval` | number | 300 | Tracking interval in seconds |
-| `workTracker.logFilePath` | string | `""` | Custom log file path |
-| `workTracker.trackBranch` | boolean | true | Enable git branch tracking |
-| `workTracker.trackActiveFile` | boolean | true | Enable active file tracking |
-| `workTracker.autoStart` | boolean | false | Auto-start tracking on activation |
-| `workTracker.logFormat` | enum | `text` | Log format: text, json, or csv |
 | `noteSaver.notesDirectory` | string | `""` | Directory where notes are saved |
 | `noteSaver.appendDatetime` | boolean | true | Append datetime to note filename |
 | `noteSaver.appendExtension` | boolean | true | Append language extension to note filename |
@@ -287,8 +209,6 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 | Shortcut | Command | Context |
 |----------|---------|---------|
 | `Ctrl+Shift+J` | Join Text with Operator | Editor focused |
-| `Ctrl+Shift+W` | Start Work Tracking | When tracking inactive |
-| `Ctrl+Shift+S` | Stop Work Tracking | When tracking active |
 
 *All shortcuts are configurable via VS Code's Keyboard Shortcuts settings.*
 
@@ -305,11 +225,6 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 - Quickly run specific test methods
 - Copy test paths for CI/CD configurations
 - Navigate between test files efficiently
-
-### **For Project Managers & Freelancers**
-- Track time spent in different files/branches
-- Generate work activity reports
-- Monitor development patterns and productivity
 
 ### **For DevOps & Backend Developers**
 - Join configuration parameters
