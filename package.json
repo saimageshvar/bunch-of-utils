@@ -51,6 +51,22 @@
       {
         "command": "extension.workTrackingStatus",
         "title": "Work Tracking Status"
+      },
+      {
+        "command": "extension.saveUntitledNote",
+        "title": "Save Untitled Note"
+      },
+      {
+        "command": "extension.refreshNotesView",
+        "title": "Refresh Notes View"
+      },
+      {
+        "command": "extension.openNoteFile",
+        "title": "Open Note"
+      },
+      {
+        "command": "extension.deleteNoteFile",
+        "title": "Delete"
       }
     ],
     "keybindings": [
@@ -123,8 +139,49 @@
           ],
           "default": "text",
           "description": "Format for the work log file (text, json, or csv)"
+        },
+        "noteSaver.notesDirectory": {
+          "type": "string",
+          "default": "",
+          "description": "The directory where notes will be saved."
+        },
+        "noteSaver.appendDatetime": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to append the current datetime to the note filename."
+        },
+        "noteSaver.appendExtension": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to append the detected language extension to the note filename."
         }
       }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "notesContainer",
+          "title": "Notes",
+          "icon": "media/notes-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "notesContainer": [
+        {
+          "id": "notesView",
+          "name": "Notes"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "extension.deleteNoteFile",
+          "when": "view == notesView && viewItem == noteItem",
+          "group": "inline"
+        }
+      ]
     }
   },
   "scripts": {

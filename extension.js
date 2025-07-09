@@ -4,6 +4,8 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
+const { registerNotesTreeView } = require('./notesView');
+
 
 // Work tracking state
 let workTrackingInterval = null;
@@ -27,6 +29,9 @@ function activate(context) {
 	context.subscriptions.push(stopWorkTrackingCommand());
 	context.subscriptions.push(openWorkLogCommand());
 	context.subscriptions.push(workTrackingStatusCommand());
+	context.subscriptions.push(saveUntitledNote());
+	registerNotesTreeView(context);
+
 
 	// Initialize work log file path
 	initializeWorkLogPath();
@@ -210,6 +215,84 @@ const joinSelectedText = (operator) => {
 		});
 	}
 };
+
+const formatDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+
+    return `${year}-${month}-${day}-${hour}-${minute}`;
+}
+
+const saveUntitledNote = () => {
+  return vscode.commands.registerCommand('extension.saveUntitledNote', async function () {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('No active editor.');
+      return;
+    }
+
+    const document = editor.document;
+    if (document.isUntitled && document.isDirty) {
+      const config = vscode.workspace.getConfiguration('noteSaver');
+      const notesDir = config.get('notesDirectory');
+      const includeDatetime = config.get('appendDatetime', true);
+      const includeExtension = config.get('appendExtension', true);
+
+      if (!notesDir || !fs.existsSync(notesDir)) {
+        vscode.window.showErrorMessage('Invalid or missing notesDirectory in settings.');
+        return;
+      }
+
+      const inputName = await vscode.window.showInputBox({
+        prompt: 'Enter a name for the note file',
+        placeHolder: 'e.g., meeting_notes'
+      });
+
+      if (!inputName) {
+        vscode.window.showInformationMessage('Note saving canceled.');
+        return;
+      }
+
+      let fileName = inputName;
+
+      if (includeDatetime) {
+        const datetime = formatDate(new Date());
+        fileName += `_${datetime}`;
+      }
+
+      if (includeExtension) {
+        const lang = document.languageId;
+        const extMap = {
+          plaintext: 'txt',
+          javascript: 'js',
+          python: 'py',
+          markdown: 'md',
+          json: 'json',
+					ruby: 'rb',
+					html: 'html',
+					shellscript: 'sh'
+        };
+        const ext = extMap[lang] || 'txt';
+        fileName += `.${ext}`;
+      }
+
+      const fullPath = path.join(notesDir, fileName);
+
+      fs.writeFileSync(fullPath, document.getText(), 'utf8');
+      vscode.workspace.openTextDocument(fullPath).then(doc => {
+        vscode.window.showTextDocument(doc);
+      });
+
+      vscode.window.showInformationMessage(`Note saved to ${fullPath}`);
+    } else {
+      vscode.window.showWarningMessage('Current file is not a new unsaved file with content.');
+    }
+  });
+};
+
 
 // Work Tracking Functions
 const initializeWorkLogPath = () => {

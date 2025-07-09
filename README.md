@@ -1,4 +1,3 @@
-
 # 🛠️ Bunch of Utils - VS Code Extension
 
 <p align="center">
@@ -17,11 +16,12 @@ This powerful VS Code extension provides essential tools for developers working 
 
 ## ✨ Features at a Glance
 
-| 🎯 **Text Manipulation** | 🧪 **Testing Tools** | ⚛️ **React/JSX** | 📊 **Work Tracking** |
-|:------------------------:|:--------------------:|:----------------:|:--------------------:|
-| Join selected text with custom operators | Copy & run test line numbers | Transform props to template literals | Track git branches & active files |
-| Multiple cursor support | Ruby & Cucumber support | Multiple selections | Multiple log formats |
-| Configurable separators | Auto-terminal execution | Batch transformations | Auto-start capability |
+| 🎯 **Text Manipulation** | 🧪 **Testing Tools** | ⚛️ **React/JSX** | 📊 **Work Tracking** | 📝 **Notes System** |
+|:------------------------:|:--------------------:|:----------------:|:--------------------:|:-------------------:|
+| Join selected text with custom operators | Copy & run test line numbers | Transform props to template literals | Track git branches & active files | Save, view, and manage notes |
+| Multiple cursor support | Ruby & Cucumber support | Multiple selections | Multiple log formats | Notes tree view in sidebar |
+| Configurable separators | Auto-terminal execution | Batch transformations | Auto-start capability | Grouped by creation date |
+|                         |                        |                   |                      | Open/delete notes from view |
 
 ---
 
@@ -37,6 +37,10 @@ This powerful VS Code extension provides essential tools for developers working 
 | **Join Text with Operator** | `Ctrl+Shift+J` | Join selected text with custom separator |
 | **Start Work Tracking** | `Ctrl+Shift+W` | Begin activity tracking |
 | **Stop Work Tracking** | `Ctrl+Shift+S` | End activity tracking |
+| **Save Untitled Note** | *(none)* | Save a new unsaved file to your notes directory |
+| **Refresh Notes View** | *(none)* | Refresh the notes tree view |
+| **Open Note** | *(none)* | Open a note from the notes view |
+| **Delete Note** | *(none)* | Delete a note from the notes view |
 
 ---
 
@@ -195,6 +199,28 @@ timestamp,branch,fileName,line,column,workspace
 
 ---
 
+### 📝 Notes System
+
+#### **Save and Organize Notes**
+Easily save new unsaved files as notes, organize them by creation date, and manage them from a dedicated sidebar view.
+
+**Commands Available:**
+- `Save Untitled Note`: Save the current unsaved file to your notes directory
+- `Refresh Notes View`: Refresh the notes list in the sidebar
+
+**How it works:**
+- Set your notes directory in the extension settings (`noteSaver.notesDirectory`).
+- Use the `Save Untitled Note` command to save a new file. You can choose to append the current datetime and file extension automatically.
+- View, open, and delete notes from the "Notes" activity bar panel, grouped by creation date.
+
+**✨ Features:**
+- ✅ Configurable notes directory
+- ✅ Optionally append datetime and file extension
+- ✅ Tree view grouped by creation date
+- ✅ Open and delete notes from the sidebar
+
+---
+
 ## ⚙️ Configuration
 
 ### 🎛️ Extension Settings
@@ -228,6 +254,15 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 }
 ```
 
+#### **Notes System**
+```json
+{
+  "noteSaver.notesDirectory": "/path/to/your/notes",
+  "noteSaver.appendDatetime": true,
+  "noteSaver.appendExtension": true
+}
+```
+
 ### 📋 Configuration Options
 
 | Setting | Type | Default | Description |
@@ -241,6 +276,9 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 | `workTracker.trackActiveFile` | boolean | true | Enable active file tracking |
 | `workTracker.autoStart` | boolean | false | Auto-start tracking on activation |
 | `workTracker.logFormat` | enum | `text` | Log format: text, json, or csv |
+| `noteSaver.notesDirectory` | string | `""` | Directory where notes are saved |
+| `noteSaver.appendDatetime` | boolean | true | Append datetime to note filename |
+| `noteSaver.appendExtension` | boolean | true | Append language extension to note filename |
 
 ---
 
@@ -277,6 +315,11 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 - Join configuration parameters
 - Create delimiter-separated value lists
 - Generate deployment scripts
+
+### **For Note-Taking and Organization**
+- Quickly save scratch notes, meeting minutes, or code snippets
+- Organize notes by creation date
+- Access and manage notes from a dedicated sidebar
 
 ---
 
