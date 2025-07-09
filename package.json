@@ -58,7 +58,8 @@
       },
       {
         "command": "extension.refreshNotesView",
-        "title": "Refresh Notes View"
+        "title": "Refresh Notes View",
+        "icon": "media/refresh.svg"
       },
       {
         "command": "extension.openNoteFile",
@@ -66,7 +67,8 @@
       },
       {
         "command": "extension.deleteNoteFile",
-        "title": "Delete"
+        "title": "Delete",
+        "icon": "media/delete.svg"
       }
     ],
     "keybindings": [
@@ -175,6 +177,13 @@
       ]
     },
     "menus": {
+      "view/title": [
+        {
+          "command": "extension.refreshNotesView",
+          "when": "view == notesView",
+          "group": "navigation"
+        }
+      ],
       "view/item/context": [
         {
           "command": "extension.deleteNoteFile",
