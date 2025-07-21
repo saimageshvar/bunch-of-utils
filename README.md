@@ -16,11 +16,26 @@ This powerful VS Code extension provides essential tools for developers working 
 
 ## ✨ Features at a Glance
 
-| 🎯 **Text Manipulation** | 🧪 **Testing Tools** | ⚛️ **React/JSX** | �📝 **Notes System** |
-|:------------------------:|:--------------------:|:----------------:|:--------------------:
-| Join selected text with custom operators | Copy & run test line numbers | Transform props to template literals | Save, view, and manage notes |
-| Multiple cursor support | Ruby & Cucumber support | Multiple selections | Open/delete notes from view
-| Configurable separators | Auto-terminal execution | Batch transformations |
+### 🎯 **Text Manipulation**
+- Join selected text with custom operators
+- Multiple cursor support  
+- Configurable separators
+
+### 🧪 **Testing Tools**
+- Copy & run test line numbers
+- Ruby & Cucumber support
+- Auto-terminal execution
+
+### ⚛️ **React/JSX**
+- Transform props to template literals
+- Multiple selections
+- Batch transformations
+
+### 📝 **Notes System**
+- Save, view, and manage notes
+- Open/delete notes from view
+- Organized by creation date
+
 ---
 
 ## 🚀 Quick Start
