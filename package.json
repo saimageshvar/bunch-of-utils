@@ -53,6 +53,10 @@
         "command": "extension.deleteNoteFile",
         "title": "Delete",
         "icon": "media/delete.svg"
+      },
+      {
+        "command": "gitModifiedSearch.openSearchWithModified",
+        "title": "Search in Modified Git Files"
       }
     ],
     "keybindings": [

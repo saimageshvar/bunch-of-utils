@@ -4,6 +4,7 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 const { registerNotesTreeView } = require('./notesView');
+const cp = require('child_process')
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -20,7 +21,62 @@ function activate(context) {
   context.subscriptions.push(joinTextWithCustomOperatorCommand());
   context.subscriptions.push(propToTemplateLiteralCommand());
   context.subscriptions.push(saveUntitledNote());
+  context.subscriptions.push(gitModifiedSearch())
   registerNotesTreeView(context);
+}
+
+const gitModifiedSearch = () => {
+  return vscode.commands.registerCommand(
+    "gitModifiedSearch.openSearchWithModified",
+    async () => {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders) {
+        vscode.window.showErrorMessage("No workspace open.");
+        return;
+      }
+
+      const cwd = workspaceFolders[0].uri.fsPath;
+
+      cp.exec("git status --porcelain", { cwd }, async (err, stdout) => {
+        if (err) {
+          vscode.window.showErrorMessage("Git command failed.");
+          return;
+        }
+
+        const files = [];
+
+        for (const line of stdout.split("\n")) {
+          if (!line.trim()) continue;
+
+          // Two-letter status code + space + filename
+          // e.g. "M  file.js", "A  file.ts", "?? newFile.py"
+          const parts = line.trim().split(/\s+/);
+          const filePath = parts.pop(); // last part is path
+
+          if (filePath) {
+            files.push(path.relative(cwd, path.join(cwd, filePath)));
+          }
+        }
+
+        if (files.length === 0) {
+          vscode.window.showInformationMessage("No uncommitted files found.");
+          return;
+        }
+
+        const includePattern = files.join(",");
+
+        // Open search view
+        await vscode.commands.executeCommand("workbench.view.search");
+
+        // Pre-populate "files to include"
+        await vscode.commands.executeCommand("workbench.action.findInFiles", {
+          query: "",
+          filesToInclude: includePattern,
+          triggerSearch: false
+        });
+      });
+    }
+  );
 }
 
 const copyTestLineNumbers = () => {
