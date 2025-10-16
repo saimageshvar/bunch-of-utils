@@ -288,14 +288,17 @@ const saveUntitledNote = () => {
         return;
       }
 
-      let fileName = inputName;
+      const parsedInputName = path.parse(inputName);
+      const hasInputExtension = parsedInputName.ext.length > 0;
+      let baseName = hasInputExtension ? parsedInputName.name : parsedInputName.base;
+      let finalExtension = hasInputExtension ? parsedInputName.ext : '';
 
       if (includeDatetime) {
         const datetime = formatDate(new Date());
-        fileName += `_${datetime}`;
+        baseName += `_${datetime}`;
       }
 
-      if (includeExtension) {
+      if (!hasInputExtension && includeExtension) {
         const lang = document.languageId;
         const extMap = {
           plaintext: 'txt',
@@ -308,10 +311,15 @@ const saveUntitledNote = () => {
           shellscript: 'sh'
         };
         const ext = extMap[lang] || 'txt';
-        fileName += `.${ext}`;
+        finalExtension = `.${ext}`;
       }
 
-      const fullPath = path.join(notesDir, fileName);
+      const finalFileName = `${baseName}${finalExtension}`;
+      const relativeFilePath = parsedInputName.dir
+        ? path.join(parsedInputName.dir, finalFileName)
+        : finalFileName;
+
+      const fullPath = path.join(notesDir, relativeFilePath);
 
       fs.writeFileSync(fullPath, document.getText(), 'utf8');
       vscode.workspace.openTextDocument(fullPath).then(doc => {
