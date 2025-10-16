@@ -55,6 +55,16 @@
         "icon": "media/delete.svg"
       },
       {
+        "command": "extension.quickPickNote",
+        "title": "Quick Pick Note",
+        "icon": "media/search.svg"
+      },
+      {
+        "command": "extension.toggleNotesCollapse",
+        "title": "Toggle Collapse/Expand All Notes",
+        "icon": "media/collapse.svg"
+      },
+      {
         "command": "gitModifiedSearch.openSearchWithModified",
         "title": "Search in Modified Git Files"
       }
@@ -64,6 +74,11 @@
         "command": "extension.joinTextWithOperator",
         "key": "ctrl+shift+j",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.quickPickNote",
+        "key": "ctrl+shift+n",
+        "when": "focusedView == notesView || sideBarVisible && activeViewlet == workbench.view.extension.notesContainer"
       }
     ],
     "configuration": {
@@ -124,7 +139,20 @@
         {
           "command": "extension.refreshNotesView",
           "when": "view == notesView",
-          "group": "navigation"
+          "group": "navigation",
+          "icon": "media/refresh.svg"
+        },
+        {
+          "command": "extension.quickPickNote",
+          "when": "view == notesView",
+          "group": "navigation",
+          "icon": "media/search.svg"
+        },
+        {
+          "command": "extension.toggleNotesCollapse",
+          "when": "view == notesView",
+          "group": "navigation",
+          "icon": "media/collapse.svg"
         }
       ],
       "view/item/context": [
