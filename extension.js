@@ -21,7 +21,8 @@ function activate(context) {
   context.subscriptions.push(joinTextWithCustomOperatorCommand());
   context.subscriptions.push(propToTemplateLiteralCommand());
   context.subscriptions.push(saveUntitledNote());
-  context.subscriptions.push(gitModifiedSearch())
+  context.subscriptions.push(gitModifiedSearch());
+  context.subscriptions.push(copyMigrationVersion());
   registerNotesTreeView(context);
 }
 
@@ -337,6 +338,31 @@ const saveUntitledNote = () => {
       }
     } else {
       vscode.window.showWarningMessage('Current file is not a new unsaved file with content.');
+    }
+  });
+};
+
+const copyMigrationVersion = () => {
+  return vscode.commands.registerCommand('extension.copyMigrationVersion', function () {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('No active editor.');
+      return;
+    }
+
+    const document = editor.document;
+    const fileName = path.basename(document.fileName);
+    
+    // Rails migration files are named like: 20231027123456_create_users.rb
+    // Extract the version number (timestamp) at the beginning
+    const versionMatch = fileName.match(/^(\d{14})_/);
+    
+    if (versionMatch) {
+      const version = versionMatch[1];
+      vscode.env.clipboard.writeText(version);
+      vscode.window.showInformationMessage(`Copied migration version: ${version}`);
+    } else {
+      vscode.window.showWarningMessage('This does not appear to be a valid Rails migration file. Expected format: YYYYMMDDHHMMSS_description.rb');
     }
   });
 };

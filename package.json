@@ -67,6 +67,10 @@
       {
         "command": "gitModifiedSearch.openSearchWithModified",
         "title": "Search in Modified Git Files"
+      },
+      {
+        "command": "extension.copyMigrationVersion",
+        "title": "Copy Rails Migration Version"
       }
     ],
     "keybindings": [
