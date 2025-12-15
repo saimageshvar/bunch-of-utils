@@ -71,6 +71,14 @@
       {
         "command": "extension.copyMigrationVersion",
         "title": "Copy Rails Migration Version"
+      },
+      {
+        "command": "extension.recordAudio",
+        "title": "Record Audio"
+      },
+      {
+        "command": "extension.playAudio",
+        "title": "Play Audio"
       }
     ],
     "keybindings": [
@@ -118,6 +126,11 @@
           "type": "boolean",
           "default": true,
           "description": "Whether to append the detected language extension to the note filename."
+        },
+        "audioRecorder.audioFolder": {
+          "type": "string",
+          "default": "audio",
+          "description": "The directory where recorded audio files will be saved."
         }
       }
     },

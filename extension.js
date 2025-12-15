@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { registerNotesTreeView } = require('./notesView');
 const cp = require('child_process')
+const { recordAudio, playAudio, AudioCodeLensProvider } = require('./audioRecorder');
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -23,6 +24,9 @@ function activate(context) {
   context.subscriptions.push(saveUntitledNote());
   context.subscriptions.push(gitModifiedSearch());
   context.subscriptions.push(copyMigrationVersion());
+  context.subscriptions.push(vscode.commands.registerCommand('extension.recordAudio', recordAudio));
+  context.subscriptions.push(vscode.commands.registerCommand('extension.playAudio', playAudio));
+  context.subscriptions.push(vscode.languages.registerCodeLensProvider([{ scheme: 'file' }, { scheme: 'untitled' }], new AudioCodeLensProvider()));
   registerNotesTreeView(context);
 }
 
@@ -352,11 +356,11 @@ const copyMigrationVersion = () => {
 
     const document = editor.document;
     const fileName = path.basename(document.fileName);
-    
+
     // Rails migration files are named like: 20231027123456_create_users.rb
     // Extract the version number (timestamp) at the beginning
     const versionMatch = fileName.match(/^(\d{14})_/);
-    
+
     if (versionMatch) {
       const version = versionMatch[1];
       vscode.env.clipboard.writeText(version);
