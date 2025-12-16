@@ -36,6 +36,11 @@ This powerful VS Code extension provides essential tools for developers working 
 - Open/delete notes from view
 - Organized by creation date
 
+### 🎙️ **Audio Recording**
+- Record voice notes directly in VS Code
+- Auto-save to configured folder
+- Inline playback via CodeLens
+
 ---
 
 ## 🚀 Quick Start
@@ -52,6 +57,8 @@ This powerful VS Code extension provides essential tools for developers working 
 | **Refresh Notes View** | *(none)* | Refresh the notes tree view |
 | **Open Note** | *(none)* | Open a note from the notes view |
 | **Delete Note** | *(none)* | Delete a note from the notes view |
+| **Record Audio** | *(none)* | Start recording audio (Linux only) |
+| **Play Audio** | *(none)* | Play recorded audio file |
 
 ---
 
@@ -250,6 +257,28 @@ Access settings via `File > Preferences > Settings` and search for "Bunch of Uti
 - Quickly save scratch notes, meeting minutes, or code snippets
 - Organize notes by creation date
 - Access and manage notes from a dedicated sidebar
+
+### 🎙️ Audio Recording
+
+#### **Voice Notes**
+Record and play audio notes directly within your editor. Perfect for leaving voice comments or recording ideas.
+
+**Commands Available:**
+- `Record Audio` - Opens a recorder interface to capture audio
+- `Play Audio` - Plays the selected audio file
+
+**How it works:**
+1. Run `Record Audio` command
+2. Use the UI to Start/Stop recording
+3. A link to the audio file is automatically inserted in your editor
+4. Click the "Play Audio" CodeLens above the link to listen
+
+**Requirements:**
+- **Linux**: Requires `arecord` (usually installed by default or via `alsa-utils`)
+- *Windows/macOS support coming soon*
+
+**Configuration:**
+- `audioRecorder.audioFolder`: Directory to save recordings (default: "audio")
 
 ---
 
