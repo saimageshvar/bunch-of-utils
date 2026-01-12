@@ -10,6 +10,39 @@ class NotesProvider {
     this.isExpanded = true; // Default to expanded
   }
 
+  // Recursively collect all files under the notes directory
+  _getAllFiles() {
+    const results = [];
+    const walk = dir => {
+      let entries = [];
+      try {
+        entries = fs.readdirSync(dir);
+      } catch (err) {
+        console.error(`Failed to read directory ${dir}:`, err);
+        return;
+      }
+      entries.forEach(entry => {
+        const full = path.join(dir, entry);
+        let stat;
+        try {
+          stat = fs.statSync(full);
+        } catch (err) {
+          console.error(`Failed to stat ${full}:`, err);
+          return;
+        }
+        if (stat.isFile()) {
+          results.push({ fullPath: full, stat });
+        } else if (stat.isDirectory()) {
+          // Skip hidden directories (start with a dot)
+          if (path.basename(full).startsWith('.')) return;
+          walk(full);
+        }
+      });
+    };
+    walk(this.notesDir);
+    return results;
+  }
+
   refresh() {
     this._onDidChangeTreeData.fire(undefined);
   }
@@ -46,19 +79,17 @@ class NotesProvider {
     }
 
     if (!element) {
-      // Return date groups
-      const files = fs.readdirSync(this.notesDir).filter(f => fs.statSync(path.join(this.notesDir, f)).isFile());
+      // Return date groups using all files recursively
+      const filesWithStats = this._getAllFiles();
       const grouped = {};
 
-      files.forEach(file => {
-        const fullPath = path.join(this.notesDir, file);
-        const stat = fs.statSync(fullPath);
-        // Use creation date (birthtime) instead of modification date
+      filesWithStats.forEach(({ fullPath, stat }) => {
         const date = stat.birthtime.toISOString().split('T')[0];
         if (!grouped[date]) grouped[date] = [];
-        grouped[date].push(file);
+        grouped[date].push({ fullPath, stat });
       });
 
+      // Sort dates newest first
       const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
       return Promise.resolve(dates.map(date => ({
         type: 'date',
@@ -66,32 +97,27 @@ class NotesProvider {
         id: `date-${date}`
       })));
     } else {
-      // Return files for a specific date
+      // Return files for a specific date (include nested files and relative path in label)
       const date = element.label;
-      const files = fs.readdirSync(this.notesDir).filter(f => fs.statSync(path.join(this.notesDir, f)).isFile());
-      const grouped = {};
-      files.forEach(file => {
-        const fullPath = path.join(this.notesDir, file);
-        const stat = fs.statSync(fullPath);
-        // Use creation date (birthtime) instead of modification date
-        const fileDate = stat.birthtime.toISOString().split('T')[0];
-        if (!grouped[fileDate]) grouped[fileDate] = [];
-        grouped[fileDate].push(file);
-      });
-      const children = (grouped[date] || []).sort().map(file => {
-        const fullPath = path.join(this.notesDir, file);
-        return {
-          type: 'file',
-          label: file,
-          id: `note-${fullPath}`,
-          command: {
-            command: 'extension.openNoteFile',
-            title: 'Open Note File',
-            arguments: [fullPath]
-          },
-          contextValue: 'noteItem'
-        };
-      });
+      const filesWithStats = this._getAllFiles();
+      const children = filesWithStats
+        .filter(({ stat }) => stat.birthtime.toISOString().split('T')[0] === date)
+        // Sort by birthtime newest first
+        .sort((a, b) => b.stat.birthtime - a.stat.birthtime)
+        .map(({ fullPath }) => {
+          const rel = path.relative(this.notesDir, fullPath);
+          return {
+            type: 'file',
+            label: rel,
+            id: `note-${fullPath}`,
+            command: {
+              command: 'extension.openNoteFile',
+              title: 'Open Note File',
+              arguments: [fullPath]
+            },
+            contextValue: 'noteItem'
+          };
+        });
       return Promise.resolve(children);
     }
   }
@@ -123,7 +149,19 @@ function registerNotesTreeView(context) {
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('extension.openNoteFile', filePath => {
-    vscode.workspace.openTextDocument(filePath).then(doc => vscode.window.showTextDocument(doc));
+    // Accept either a string path or a vscode.Uri or command-argument style
+    let fp = filePath;
+    if (filePath && filePath.command && Array.isArray(filePath.command.arguments)) {
+      fp = filePath.command.arguments[0];
+    }
+    if (filePath instanceof vscode.Uri) {
+      fp = filePath.fsPath;
+    }
+
+    vscode.workspace.openTextDocument(fp).then(doc => vscode.window.showTextDocument(doc)).catch(err => {
+      vscode.window.showErrorMessage(`Failed to open file: ${err.message}`);
+      console.error(`Failed to open file ${fp}:`, err);
+    });
   }));
 
   context.subscriptions.push(vscode.commands.registerCommand('extension.deleteNoteFile', filePath => {
@@ -153,29 +191,51 @@ function showNotesQuickPick() {
       return;
     }
 
-    // Read all files from notes directory
-    const files = fs.readdirSync(notesDir)
-      .filter(f => {
+    // Read all files from notes directory recursively
+    const collect = dir => {
+      const acc = [];
+      const walk = d => {
+        let entries = [];
         try {
-          return fs.statSync(path.join(notesDir, f)).isFile();
+          entries = fs.readdirSync(d);
         } catch (err) {
-          console.error(`Error reading file ${f}:`, err);
-          return false;
+          console.error(`Failed to read dir ${d}:`, err);
+          return;
         }
-      })
-      .map(file => {
-        const fullPath = path.join(notesDir, file);
-        const stat = fs.statSync(fullPath);
+        entries.forEach(entry => {
+          const full = path.join(d, entry);
+          let stat;
+          try {
+            stat = fs.statSync(full);
+          } catch (err) {
+            console.error(`Failed to stat ${full}:`, err);
+            return;
+          }
+          if (stat.isFile()) {
+            acc.push({ fullPath: full, stat });
+          } else if (stat.isDirectory()) {
+            walk(full);
+          }
+        });
+      };
+      walk(dir);
+      return acc;
+    };
+
+    const files = collect(notesDir)
+      .map(({ fullPath, stat }) => {
         const createdDate = stat.birthtime.toISOString().split('T')[0];
         const createdTime = stat.birthtime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-
+        const rel = path.relative(notesDir, fullPath);
         return {
-          label: file,
+          label: rel,
           description: `Created: ${createdDate} ${createdTime}`,
-          fullPath: fullPath
+          fullPath: fullPath,
+          birthtimeMs: stat.birthtimeMs || stat.birthtime.getTime()
         };
       })
-      .sort((a, b) => b.description.localeCompare(a.description)); // Sort by date, newest first
+      // Sort by birthtime newest first
+      .sort((a, b) => b.birthtimeMs - a.birthtimeMs);
 
     if (files.length === 0) {
       vscode.window.showInformationMessage('No notes found in the notes directory.');
@@ -196,6 +256,7 @@ function showNotesQuickPick() {
           vscode.window.showTextDocument(doc);
         }).catch(err => {
           vscode.window.showErrorMessage(`Failed to open file: ${err.message}`);
+          console.error(`Failed to open file ${selected.fullPath}:`, err);
         });
       }
       quickPick.hide();
