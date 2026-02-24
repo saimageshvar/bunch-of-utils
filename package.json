@@ -12,7 +12,7 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": ["onStartupFinished"],
   "main": "./extension.js",
   "contributes": {
     "commands": [
@@ -131,6 +131,29 @@
           "type": "string",
           "default": "audio",
           "description": "The directory where recorded audio files will be saved."
+        },
+        "fileMention.excludePatterns": {
+          "type": "string",
+          "default": "**/node_modules/**,**/.git/**,**/dist/**,**/build/**",
+          "description": "Comma-separated glob patterns to exclude from file search."
+        },
+        "fileMention.allowlistFolders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Absolute folder paths to index when no workspace is open (e.g. for tmp/untitled files)."
+        },
+        "fileMention.maxResults": {
+          "type": "number",
+          "default": 5000,
+          "description": "Maximum number of files to index per workspace."
+        },
+        "fileMention.triggerCharacter": {
+          "type": "string",
+          "default": "@",
+          "description": "The character that activates file suggestions. Requires a VS Code reload to take effect."
         }
       }
     },

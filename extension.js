@@ -6,6 +6,7 @@ const path = require('path');
 const { registerNotesTreeView } = require('./notesView');
 const cp = require('child_process')
 const { recordAudio, playAudio, AudioCodeLensProvider } = require('./audioRecorder');
+const { registerFileMentionProvider } = require('./fileMentionProvider');
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -28,6 +29,7 @@ function activate(context) {
   context.subscriptions.push(vscode.commands.registerCommand('extension.playAudio', playAudio));
   context.subscriptions.push(vscode.languages.registerCodeLensProvider([{ scheme: 'file' }, { scheme: 'untitled' }], new AudioCodeLensProvider()));
   registerNotesTreeView(context);
+  registerFileMentionProvider(context);
 }
 
 const gitModifiedSearch = () => {
