@@ -1,13 +1,18 @@
 const vscode = require('vscode');
 
 // Pre-computed cache entries — paid once at index time, not per keystroke
-// fileEntries: { uri, relativePath, lowerPath, basename }
-// folderEntries: { relativePath, lowerPath, basename }
+// fileEntries: { uri, relativePath, lowerPath, basename, segments, depth, isTest, stem }
+// folderEntries: { relativePath, lowerPath, basename, segments, depth, isTest, stem }
 let fileEntries = [];
 let folderEntries = [];
 
+// MRU tracking for recently selected files
+let mruList = []; // [{relativePath, timestamp}]
+const MAX_MRU_SIZE = 20;
+
 let isRefreshing = false;
 let pendingRefresh = false; // concurrency guard: queue at most one pending refresh
+let extensionContext = null; // stored for workspace state access
 
 function getConfig() {
   return vscode.workspace.getConfiguration('fileMention');
@@ -27,7 +32,13 @@ function makeFileEntry(uri) {
   const lowerPath = relativePath.toLowerCase();
   const segments = relativePath.split('/');
   const basename = segments[segments.length - 1].toLowerCase();
-  return { uri, relativePath, lowerPath, basename };
+  const depth = segments.length - 1;
+  const stem = basename.replace(/\.[^.]*$/, '');
+  
+  // Detect test/spec files
+  const isTest = /(_test\.|_spec\.|test_|\.test\.|\.spec\.|__tests__|\btest\b|\bspec\b)/i.test(relativePath);
+  
+  return { uri, relativePath, lowerPath, basename, segments, depth, isTest, stem };
 }
 
 function deriveFolderEntries(entries) {
@@ -42,7 +53,10 @@ function deriveFolderEntries(entries) {
         const lowerPath = dir.toLowerCase();
         const segs = dir.split('/');
         const basename = segs[segs.length - 1].toLowerCase();
-        folders.push({ relativePath: dir, lowerPath, basename });
+        const depth = segs.length - 1;
+        const stem = basename;
+        const isTest = false;
+        folders.push({ relativePath: dir, lowerPath, basename, segments: segs, depth, isTest, stem });
       }
     }
   }
@@ -109,7 +123,10 @@ function addFileEntry(uri) {
       const lowerPath = dir.toLowerCase();
       const segs = dir.split('/');
       const basename = segs[segs.length - 1].toLowerCase();
-      folderEntries.push({ relativePath: dir, lowerPath, basename });
+      const depth = segs.length - 1;
+      const stem = basename;
+      const isTest = false;
+      folderEntries.push({ relativePath: dir, lowerPath, basename, segments: segs, depth, isTest, stem });
       existingFolders.add(dir);
     }
   }
@@ -145,16 +162,21 @@ function fuzzyScoreFrom(lowerQuery, lowerPath, basenameStart, startIdx) {
 }
 
 /**
+ * Enhanced fuzzy scoring with segment-awareness, prefix boosts, depth penalty, and test detection.
  * Try matching starting from every occurrence of the first query character and return
  * the best score. Pure left-to-right greedy misses better alignments — e.g. querying
  * "appconstants" against "config/initializers/app_constants.rb" would greedily anchor
  * on the 'a' in "initializers" instead of the 'a' that starts "app_constants".
- *
- * Post-match bonuses:
- *  +15  query exactly equals a full path segment  ("service" in "app/service/base.rb")
- *  +10  query exactly equals the basename without extension ("schema" in "schema.rb")
  */
-function fuzzyScore(lowerQuery, { lowerPath, basename }) {
+function fuzzyScore(lowerQuery, entry, queryHintsTest = false) {
+  const {
+    lowerPath,
+    basename,
+    segments = [],
+    depth = 0,
+    isTest = false,
+    stem = basename,
+  } = entry;
   const basenameStart = lowerPath.length - basename.length;
   const firstChar = lowerQuery[0];
   let bestScore = null;
@@ -170,47 +192,184 @@ function fuzzyScore(lowerQuery, { lowerPath, basename }) {
   if (bestScore === null) return null;
 
   // Exact segment match — rewards "service" matching the directory segment "service"
-  // even when the basename is something else and gives no basename bonus
-  for (const seg of lowerPath.split('/')) {
-    if (seg === lowerQuery) { bestScore += 15; break; }
+  for (const seg of segments) {
+    if (seg.toLowerCase() === lowerQuery) { bestScore += 15; break; }
+  }
+
+  // Basename prefix bonus — strong signal for intent
+  if (basename.startsWith(lowerQuery)) {
+    bestScore += 12;
   }
 
   // Exact stem match — breaks ties like "schema.rb" vs "schema_migration.rb"
-  // Stem suffix match — rewards "controller" matching "users_controller.rb" over
-  // "users_controller_test.rb" (stem ends with "_test", not the query)
-  const stem = basename.replace(/\.[^.]*$/, '');
   if (stem === lowerQuery) {
     bestScore += 10;
   } else if (stem.endsWith(lowerQuery)) {
     bestScore += 7;
   }
 
+  // Segment token matching — reward ordered segment prefix matches
+  // e.g., "appmod" should boost "app/models/..." over "config/app_module"
+  const queryTokens = lowerQuery.split(/[\/\-_]/).filter(Boolean);
+  if (queryTokens.length > 1) {
+    let tokenMatchCount = 0;
+    let segIdx = 0;
+    for (const token of queryTokens) {
+      while (segIdx < segments.length) {
+        if (segments[segIdx].toLowerCase().startsWith(token)) {
+          tokenMatchCount++;
+          segIdx++;
+          break;
+        }
+        segIdx++;
+      }
+    }
+    if (tokenMatchCount > 1) {
+      bestScore += tokenMatchCount * 4;
+    }
+  }
+
+  // Mild depth penalty — prefer shallower paths when scores are close
+  bestScore -= Math.min(depth * 0.5, 3);
+
+  // Path length penalty — prefer shorter paths
+  bestScore -= Math.min(lowerPath.length * 0.02, 2);
+
+  // Test/spec penalty unless query hints test intent
+  if (isTest && !queryHintsTest) {
+    bestScore -= 5;
+  }
+
   return bestScore;
 }
 
-function fuzzyFilterEntries(query, entries, maxItems = 50) {
-  const lowerQuery = query.toLowerCase(); // one allocation, reused across all entries
+function fuzzyFilterEntries(query, fileEntries, folderEntries, maxItems = 50) {
+  const lowerQuery = query.toLowerCase();
+  const queryHintsTest = /test|spec|__tests__/.test(lowerQuery);
   const scored = [];
 
-  // Scan all entries — no early bail (bail would miss high-scoring late entries)
-  for (const entry of entries) {
-    const score = fuzzyScore(lowerQuery, entry);
-    if (score !== null) scored.push({ entry, score });
+  // Score all files
+  for (const entry of fileEntries) {
+    const score = fuzzyScore(lowerQuery, entry, queryHintsTest);
+    if (score !== null) {
+      scored.push({ entry, score, isFile: true });
+    }
+  }
+
+  // Score all folders
+  for (const entry of folderEntries) {
+    const score = fuzzyScore(lowerQuery, entry, queryHintsTest);
+    if (score !== null) {
+      scored.push({ entry, score, isFile: false });
+    }
+  }
+
+  // Single combined ranking with stable tie-break:
+  // 1. Score (desc)
+  // 2. Basename prefix match (desc)
+  // 3. File-over-folder for exact basename match
+  // 4. Depth (asc)
+  // 5. Path length (asc)
+  // 6. Lexicographic (asc)
+  scored.sort((a, b) => {
+    // Primary: score descending
+    if (a.score !== b.score) return b.score - a.score;
+
+    // Secondary: basename prefix match
+    const aBasenamePrefix = a.entry.basename.startsWith(lowerQuery) ? 1 : 0;
+    const bBasenamePrefix = b.entry.basename.startsWith(lowerQuery) ? 1 : 0;
+    if (aBasenamePrefix !== bBasenamePrefix) return bBasenamePrefix - aBasenamePrefix;
+
+    // Tertiary: file-over-folder tie rule (only when basenames match exactly)
+    if (a.entry.basename === b.entry.basename && a.isFile !== b.isFile) {
+      return a.isFile ? -1 : 1;
+    }
+
+    // Quaternary: depth ascending (shallower first)
+    if (a.entry.depth !== b.entry.depth) return a.entry.depth - b.entry.depth;
+
+    // Quinary: path length ascending (shorter first)
+    const aLen = a.entry.lowerPath.length;
+    const bLen = b.entry.lowerPath.length;
+    if (aLen !== bLen) return aLen - bLen;
+
+    // Final: lexicographic ascending
+    return a.entry.relativePath.localeCompare(b.entry.relativePath);
+  });
+
+  return scored.slice(0, maxItems);
+}
+
+// MRU management
+function loadMRU() {
+  if (!extensionContext) return [];
+  const stored = extensionContext.workspaceState.get('fileMentionMRU', []);
+  return stored.filter(item => item && item.relativePath); // validate structure
+}
+
+function saveMRU(list) {
+  if (!extensionContext) return;
+  extensionContext.workspaceState.update('fileMentionMRU', list);
+}
+
+function addToMRU(relativePath) {
+  mruList = mruList.filter(item => item.relativePath !== relativePath);
+  mruList.unshift({ relativePath, timestamp: Date.now() });
+  if (mruList.length > MAX_MRU_SIZE) {
+    mruList = mruList.slice(0, MAX_MRU_SIZE);
+  }
+  saveMRU(mruList);
+}
+
+function getDefaultSuggestions() {
+  // For bare trigger, show MRU-boosted suggestions
+  const mruPaths = new Set(mruList.map(m => m.relativePath));
+  const scored = [];
+
+  // Score MRU entries with recency boost
+  for (const entry of fileEntries) {
+    if (mruPaths.has(entry.relativePath)) {
+      const mruIndex = mruList.findIndex(m => m.relativePath === entry.relativePath);
+      const recencyBoost = 100 - mruIndex * 3; // Recent = higher boost
+      scored.push({ entry, score: recencyBoost, isFile: true });
+    }
+  }
+
+  // Add some high-value non-MRU files (shallow, short paths, not tests)
+  for (const entry of fileEntries) {
+    if (!mruPaths.has(entry.relativePath) && scored.length < 30) {
+      const score = 50 - entry.depth * 2 - entry.lowerPath.length * 0.1 - (entry.isTest ? 10 : 0);
+      if (score > 30) {
+        scored.push({ entry, score, isFile: true });
+      }
+    }
   }
 
   scored.sort((a, b) => b.score - a.score);
-  return scored.slice(0, maxItems);
+  return scored.slice(0, 50);
 }
 
 const fileMentionProvider = {
   provideCompletionItems(document, position, _token, _context) {
+    const triggerChar = getConfig().get('triggerCharacter', '@');
     const lineText = document.lineAt(position.line).text;
     const beforeCursor = lineText.substring(0, position.character);
-    const match = beforeCursor.match(/@([^\s@]*)$/);
+    
+    // Fix: use configurable trigger character in regex
+    const escapedTrigger = triggerChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(escapedTrigger + '([^\\s' + escapedTrigger + ']*)$');
+    const match = beforeCursor.match(pattern);
     if (!match) return [];
 
     const query = match[1];
 
+    const replaceRange = new vscode.Range(
+      new vscode.Position(position.line, position.character - match[0].length),
+      position
+    );
+    const typedText = match[0];
+
+    // Handle bare trigger (no query)
     if (!query) {
       const workspaceFolders = vscode.workspace.workspaceFolders;
       const allowlist = getConfig().get('allowlistFolders', []);
@@ -220,52 +379,75 @@ const fileMentionProvider = {
           vscode.CompletionItemKind.Text
         );
         hint.insertText = '';
-        hint.filterText = '@';
+        hint.filterText = typedText;
         return [hint];
       }
-      return [];
+
+      // Show MRU-based default suggestions
+      const defaults = getDefaultSuggestions();
+      return new vscode.CompletionList(
+        defaults.map(({ entry, score }, idx) => {
+          const item = new vscode.CompletionItem(
+            entry.relativePath,
+            vscode.CompletionItemKind.File
+          );
+          item.insertText = entry.relativePath;
+          item.filterText = typedText;
+          item.sortText = String(idx).padStart(4, '0');
+          item.detail = mruList.some(m => m.relativePath === entry.relativePath)
+            ? 'recent file'
+            : 'file mention';
+          item.range = replaceRange;
+          return item;
+        }),
+        true
+      );
     }
 
-    const replaceRange = new vscode.Range(
-      new vscode.Position(position.line, position.character - match[0].length),
-      position
-    );
+    // Query-based fuzzy filtering with combined ranking
+    const results = fuzzyFilterEntries(query, fileEntries, folderEntries);
 
-    // Setting filterText to the exact typed text (@query) means VS Code's internal filter
-    // always passes our items through — our server-side fuzzy ranking is the sole filter.
-    const typedText = match[0];
-
-    const fileResults = fuzzyFilterEntries(query, fileEntries).map(({ entry, score }) => {
-      const item = new vscode.CompletionItem(entry.relativePath, vscode.CompletionItemKind.File);
+    const items = results.map(({ entry, score, isFile }, idx) => {
+      const item = new vscode.CompletionItem(
+        entry.relativePath,
+        isFile ? vscode.CompletionItemKind.File : vscode.CompletionItemKind.Folder
+      );
       item.insertText = entry.relativePath;
       item.filterText = typedText;
-      item.sortText = '0' + String(100000 - score).padStart(6, '0');
-      item.detail = 'file mention';
+      item.sortText = String(idx).padStart(4, '0');
+      item.detail = isFile ? 'file mention' : 'folder mention';
       item.range = replaceRange;
+      
+      // Track selection for MRU
+      if (isFile) {
+        item.command = {
+          command: 'fileMention.trackSelection',
+          title: '',
+          arguments: [entry.relativePath]
+        };
+      }
+      
       return item;
     });
 
-    const folderResults = fuzzyFilterEntries(query, folderEntries).map(({ entry, score }) => {
-      const item = new vscode.CompletionItem(entry.relativePath, vscode.CompletionItemKind.Folder);
-      item.insertText = entry.relativePath;
-      item.filterText = typedText;
-      item.sortText = '1' + String(100000 - score).padStart(6, '0');
-      item.detail = 'folder mention';
-      item.range = replaceRange;
-      return item;
-    });
-
-    // isIncomplete: true — tells VS Code to re-call us on every keystroke instead of
-    // caching results and re-filtering them with its own fuzzy algorithm, which would
-    // layer a second (conflicting) filter on top of ours and hide valid matches.
-    return new vscode.CompletionList([...fileResults, ...folderResults], true);
+    return new vscode.CompletionList(items, true);
   }
 };
 
 let workspaceFolderChangeTimer = null;
 
 function registerFileMentionProvider(context) {
+  extensionContext = context;
+  mruList = loadMRU();
+  
   const triggerChar = getConfig().get('triggerCharacter', '@');
+
+  // Register MRU tracking command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('fileMention.trackSelection', (relativePath) => {
+      addToMRU(relativePath);
+    })
+  );
 
   fullRefresh();
 
@@ -287,7 +469,9 @@ function registerFileMentionProvider(context) {
     vscode.languages.registerCompletionItemProvider(
       [{ scheme: 'file' }, { scheme: 'untitled' }],
       fileMentionProvider,
-      triggerChar
+      triggerChar,
+      '/',
+      '.'
     )
   );
 }

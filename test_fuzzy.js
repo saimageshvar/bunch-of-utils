@@ -22,7 +22,8 @@ function fuzzyScoreFrom(lowerQuery, lowerPath, basenameStart, startIdx) {
   return qi < lowerQuery.length ? null : score;
 }
 
-function fuzzyScore(lowerQuery, { lowerPath, basename }) {
+function fuzzyScore(lowerQuery, entry, queryHintsTest = false) {
+  const { lowerPath, basename, segments, depth, isTest, stem } = entry;
   const basenameStart = lowerPath.length - basename.length;
   const firstChar = lowerQuery[0];
   let bestScore = null;
@@ -38,18 +39,51 @@ function fuzzyScore(lowerQuery, { lowerPath, basename }) {
   if (bestScore === null) return null;
 
   // Exact segment match — rewards "service" matching the directory segment "service"
-  for (const seg of lowerPath.split('/')) {
-    if (seg === lowerQuery) { bestScore += 15; break; }
+  for (const seg of segments) {
+    if (seg.toLowerCase() === lowerQuery) { bestScore += 15; break; }
+  }
+
+  // Basename prefix bonus — strong signal for intent
+  if (basename.startsWith(lowerQuery)) {
+    bestScore += 12;
   }
 
   // Exact stem match — breaks ties like "schema.rb" vs "schema_migration.rb"
-  // Stem suffix match — rewards "controller" matching "users_controller.rb" over
-  // "users_controller_test.rb" (stem ends with "_test", not the query)
-  const stem = basename.replace(/\.[^.]*$/, '');
   if (stem === lowerQuery) {
     bestScore += 10;
   } else if (stem.endsWith(lowerQuery)) {
     bestScore += 7;
+  }
+
+  // Segment token matching — reward ordered segment prefix matches
+  const queryTokens = lowerQuery.split(/[\/\-_]/).filter(Boolean);
+  if (queryTokens.length > 1) {
+    let tokenMatchCount = 0;
+    let segIdx = 0;
+    for (const token of queryTokens) {
+      while (segIdx < segments.length) {
+        if (segments[segIdx].toLowerCase().startsWith(token)) {
+          tokenMatchCount++;
+          segIdx++;
+          break;
+        }
+        segIdx++;
+      }
+    }
+    if (tokenMatchCount > 1) {
+      bestScore += tokenMatchCount * 4;
+    }
+  }
+
+  // Mild depth penalty — prefer shallower paths when scores are close
+  bestScore -= Math.min(depth * 0.5, 3);
+
+  // Path length penalty — prefer shorter paths
+  bestScore -= Math.min(lowerPath.length * 0.02, 2);
+
+  // Test/spec penalty unless query hints test intent
+  if (isTest && !queryHintsTest) {
+    bestScore -= 5;
   }
 
   return bestScore;
@@ -59,15 +93,26 @@ function makeEntry(relativePath) {
   const lowerPath = relativePath.toLowerCase();
   const segments = relativePath.split('/');
   const basename = segments[segments.length - 1].toLowerCase();
-  return { relativePath, lowerPath, basename };
+  const depth = segments.length - 1;
+  const stem = basename.replace(/\.[^.]*$/, '');
+  const isTest = /(_test\.|_spec\.|test_|\.test\.|\.spec\.|__tests__|\\btest\\b|\\bspec\\b)/i.test(relativePath);
+  return { relativePath, lowerPath, basename, segments, depth, isTest, stem };
 }
 
 function rank(query, paths) {
   const lowerQuery = query.toLowerCase();
+  const queryHintsTest = /test|spec|__tests__/.test(lowerQuery);
   const scored = paths
-    .map(p => ({ path: p, score: fuzzyScore(lowerQuery, makeEntry(p)) }))
+    .map(p => ({ path: p, score: fuzzyScore(lowerQuery, makeEntry(p), queryHintsTest) }))
     .filter(x => x.score !== null);
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    // Tie-break: shorter path, then lexicographic
+    const aLen = a.path.length;
+    const bLen = b.path.length;
+    if (aLen !== bLen) return aLen - bLen;
+    return a.path.localeCompare(b.path);
+  });
   return scored;
 }
 
@@ -196,6 +241,56 @@ const tests = [
       'app/models/user.rb',
     ],
     expected: ['app/models/user.rb'],
+  },
+  {
+    // Basename prefix bonus should elevate prefix matches
+    name: '13. Basename prefix match beats mid-basename match',
+    query: 'user',
+    paths: [
+      'app/models/new_user_form.rb',
+      'app/models/user.rb',
+    ],
+    expected: ['app/models/user.rb'],
+  },
+  {
+    // Segment token matching should work for structured queries
+    name: '14. Segment token query "app/mod" favors "app/models" over scattered match',
+    query: 'app/mod',
+    paths: [
+      'happy_application/modules/base.rb',
+      'app/models/base.rb',
+    ],
+    expected: ['app/models/base.rb'],
+  },
+  {
+    // Shallower paths preferred when scores are close (depth penalty)
+    name: '15. Shallower path preferred for similar matches',
+    query: 'util',
+    paths: [
+      'app/services/auth/helpers/utilities.rb',
+      'app/utilities.rb',
+    ],
+    expected: ['app/utilities.rb'],
+  },
+  {
+    // Test penalty should be overridden when query hints test intent
+    name: '16. Test file preferred when query hints test intent',
+    query: 'usertest',
+    paths: [
+      'app/models/user.rb',
+      'test/models/user_test.rb',
+    ],
+    expected: ['test/models/user_test.rb'],
+  },
+  {
+    // Verify test penalty works for neutral queries
+    name: '17. Source file preferred over test file for neutral query',
+    query: 'payment',
+    paths: [
+      'test/models/payment_spec.rb',
+      'app/models/payment.rb',
+    ],
+    expected: ['app/models/payment.rb'],
   },
 ];
 
