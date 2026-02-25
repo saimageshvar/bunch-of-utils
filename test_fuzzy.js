@@ -11,7 +11,7 @@ function fuzzyScoreFrom(lowerQuery, lowerPath, basenameStart, startIdx) {
   for (let i = startIdx; i < lowerPath.length && qi < lowerQuery.length; i++) {
     if (lowerPath[i] === lowerQuery[qi]) {
       if (prevMatchIdx === i - 1) score += 3;
-      if (i === 0 || lowerPath[i - 1] === '/') score += 5;
+      if (i === 0 || lowerPath[i - 1] === '/' || lowerPath[i - 1] === '_') score += 5;
       if (i >= basenameStart) score += 2;
       score += 1;
       prevMatchIdx = i;
@@ -43,8 +43,14 @@ function fuzzyScore(lowerQuery, { lowerPath, basename }) {
   }
 
   // Exact stem match — breaks ties like "schema.rb" vs "schema_migration.rb"
+  // Stem suffix match — rewards "controller" matching "users_controller.rb" over
+  // "users_controller_test.rb" (stem ends with "_test", not the query)
   const stem = basename.replace(/\.[^.]*$/, '');
-  if (stem === lowerQuery) bestScore += 10;
+  if (stem === lowerQuery) {
+    bestScore += 10;
+  } else if (stem.endsWith(lowerQuery)) {
+    bestScore += 7;
+  }
 
   return bestScore;
 }
@@ -169,6 +175,27 @@ const tests = [
       'app/models/base.rb',
     ],
     expected: ['app/models/base.rb'],
+  },
+  {
+    // app file should beat its test counterpart for common Rails queries
+    name: '11. Source file beats _test counterpart (stem suffix bonus)',
+    query: 'controller',
+    paths: [
+      'test/controllers/users_controller_test.rb',
+      'app/controllers/users_controller.rb',
+    ],
+    expected: ['app/controllers/users_controller.rb'],
+  },
+  {
+    // exact source file should beat test file even when test volume is high
+    name: '12. Source model file beats test file for model name query',
+    query: 'user',
+    paths: [
+      'test/models/user_test.rb',
+      'test/factories/user_factory.rb',
+      'app/models/user.rb',
+    ],
+    expected: ['app/models/user.rb'],
   },
 ];
 

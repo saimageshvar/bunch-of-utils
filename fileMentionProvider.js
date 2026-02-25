@@ -133,7 +133,7 @@ function fuzzyScoreFrom(lowerQuery, lowerPath, basenameStart, startIdx) {
   for (let i = startIdx; i < lowerPath.length && qi < lowerQuery.length; i++) {
     if (lowerPath[i] === lowerQuery[qi]) {
       if (prevMatchIdx === i - 1) score += 3;
-      if (i === 0 || lowerPath[i - 1] === '/') score += 5;
+      if (i === 0 || lowerPath[i - 1] === '/' || lowerPath[i - 1] === '_') score += 5;
       if (i >= basenameStart) score += 2;
       score += 1;
       prevMatchIdx = i;
@@ -176,8 +176,14 @@ function fuzzyScore(lowerQuery, { lowerPath, basename }) {
   }
 
   // Exact stem match — breaks ties like "schema.rb" vs "schema_migration.rb"
+  // Stem suffix match — rewards "controller" matching "users_controller.rb" over
+  // "users_controller_test.rb" (stem ends with "_test", not the query)
   const stem = basename.replace(/\.[^.]*$/, '');
-  if (stem === lowerQuery) bestScore += 10;
+  if (stem === lowerQuery) {
+    bestScore += 10;
+  } else if (stem.endsWith(lowerQuery)) {
+    bestScore += 7;
+  }
 
   return bestScore;
 }
