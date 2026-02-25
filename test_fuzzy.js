@@ -292,6 +292,27 @@ const tests = [
     ],
     expected: ['app/models/payment.rb'],
   },
+  {
+    // Path-like query should strongly prefer app/controllers over test/controllers
+    name: '18. app/controller prefers app paths over test paths',
+    query: 'app/controller',
+    paths: [
+      'test/controllers/users_controller_test.rb',
+      'app/controllers/users_controller.rb',
+      'spec/controllers/users_controller_spec.rb',
+    ],
+    expected: ['app/controllers/users_controller.rb'],
+  },
+  {
+    // Root-intent query should prefer top-level app path over deep vendor nested app path
+    name: '19. app/controller/userscontroller prefers top-level app over vendor nested app',
+    query: 'app/controll/userscontroller',
+    paths: [
+      'vendor/engines/chronus_mentor_api/app/controllers/api/v2/users_controller.rb',
+      'app/controllers/users_controller.rb',
+    ],
+    expected: ['app/controllers/users_controller.rb'],
+  },
 ];
 
 // ---- Runner ----

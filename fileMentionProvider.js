@@ -1,10 +1,10 @@
 const vscode = require('vscode');
+const { execFile } = require('child_process');
+const path = require('path');
 
 // Pre-computed cache entries — paid once at index time, not per keystroke
 // fileEntries: { uri, relativePath, lowerPath, basename, segments, depth, isTest, stem }
-// folderEntries: { relativePath, lowerPath, basename, segments, depth, isTest, stem }
 let fileEntries = [];
-let folderEntries = [];
 
 // MRU tracking for recently selected files
 let mruList = []; // [{relativePath, timestamp}]
@@ -34,33 +34,35 @@ function makeFileEntry(uri) {
   const basename = segments[segments.length - 1].toLowerCase();
   const depth = segments.length - 1;
   const stem = basename.replace(/\.[^.]*$/, '');
-  
+
   // Detect test/spec files
   const isTest = /(_test\.|_spec\.|test_|\.test\.|\.spec\.|__tests__|\btest\b|\bspec\b)/i.test(relativePath);
-  
+
   return { uri, relativePath, lowerPath, basename, segments, depth, isTest, stem };
 }
 
-function deriveFolderEntries(entries) {
-  const seen = new Set();
-  const folders = [];
-  for (const { relativePath } of entries) {
-    const parts = relativePath.split('/');
-    for (let i = 1; i < parts.length; i++) {
-      const dir = parts.slice(0, i).join('/');
-      if (!seen.has(dir)) {
-        seen.add(dir);
-        const lowerPath = dir.toLowerCase();
-        const segs = dir.split('/');
-        const basename = segs[segs.length - 1].toLowerCase();
-        const depth = segs.length - 1;
-        const stem = basename;
-        const isTest = false;
-        folders.push({ relativePath: dir, lowerPath, basename, segments: segs, depth, isTest, stem });
+function gitLsFiles(cwd) {
+  return new Promise((resolve) => {
+    execFile(
+      'git',
+      ['ls-files'],
+      { cwd, maxBuffer: 1024 * 1024 * 64 },
+      (error, stdout) => {
+        if (error) {
+          resolve([]);
+          return;
+        }
+
+        const lines = stdout
+          .split('\n')
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        const uris = lines.map(rel => vscode.Uri.file(path.join(cwd, rel)));
+        resolve(uris);
       }
-    }
-  }
-  return folders;
+    );
+  });
 }
 
 async function fullRefresh() {
@@ -77,7 +79,28 @@ async function fullRefresh() {
     const folders = vscode.workspace.workspaceFolders;
 
     if (folders && folders.length > 0) {
-      const uris = await vscode.workspace.findFiles('**/*', excludeGlob, maxResults);
+      // Prefer git ls-files for complete, fast, deterministic indexing in large repos.
+      // Fall back to workspace.findFiles when git is unavailable.
+      const gitUris = [];
+      for (const folder of folders) {
+        const cwd = folder.uri.fsPath;
+        const listed = await gitLsFiles(cwd);
+        gitUris.push(...listed);
+      }
+
+      let uris;
+      if (gitUris.length > 0) {
+        const seen = new Set();
+        uris = gitUris.filter(uri => {
+          const key = uri.toString();
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      } else {
+        uris = await vscode.workspace.findFiles('**/*', excludeGlob, maxResults);
+      }
+
       fileEntries = uris.map(makeFileEntry);
     } else {
       const allowlist = config.get('allowlistFolders', []);
@@ -95,7 +118,6 @@ async function fullRefresh() {
         fileEntries = results.map(makeFileEntry);
       }
     }
-    folderEntries = deriveFolderEntries(fileEntries);
   } finally {
     isRefreshing = false;
     // Run the queued refresh now that we're done
@@ -113,30 +135,12 @@ function addFileEntry(uri) {
 
   const entry = makeFileEntry(uri);
   fileEntries.push(entry);
-
-  // Add any new ancestor folders
-  const existingFolders = new Set(folderEntries.map(f => f.relativePath));
-  const parts = entry.relativePath.split('/');
-  for (let i = 1; i < parts.length; i++) {
-    const dir = parts.slice(0, i).join('/');
-    if (!existingFolders.has(dir)) {
-      const lowerPath = dir.toLowerCase();
-      const segs = dir.split('/');
-      const basename = segs[segs.length - 1].toLowerCase();
-      const depth = segs.length - 1;
-      const stem = basename;
-      const isTest = false;
-      folderEntries.push({ relativePath: dir, lowerPath, basename, segments: segs, depth, isTest, stem });
-      existingFolders.add(dir);
-    }
-  }
 }
 
 // Incremental remove — O(n) filter, still much cheaper than a full re-crawl
 function removeFileEntry(uri) {
   const uriStr = uri.toString();
   fileEntries = fileEntries.filter(e => e.uri.toString() !== uriStr);
-  folderEntries = deriveFolderEntries(fileEntries);
 }
 
 /**
@@ -214,9 +218,13 @@ function fuzzyScore(lowerQuery, entry, queryHintsTest = false) {
   if (queryTokens.length > 1) {
     let tokenMatchCount = 0;
     let segIdx = 0;
+    let firstMatchedSegIdx = -1;
+    let lastMatchedSegIdx = -1;
     for (const token of queryTokens) {
       while (segIdx < segments.length) {
         if (segments[segIdx].toLowerCase().startsWith(token)) {
+          if (firstMatchedSegIdx === -1) firstMatchedSegIdx = segIdx;
+          lastMatchedSegIdx = segIdx;
           tokenMatchCount++;
           segIdx++;
           break;
@@ -226,6 +234,30 @@ function fuzzyScore(lowerQuery, entry, queryHintsTest = false) {
     }
     if (tokenMatchCount > 1) {
       bestScore += tokenMatchCount * 4;
+    }
+
+    // Penalize missing query tokens for path-like queries.
+    // This makes `app/controller` strongly prefer paths containing both
+    // app + controller segments over paths that only match one token.
+    const unmatchedTokens = queryTokens.length - tokenMatchCount;
+    if (unmatchedTokens > 0) {
+      bestScore -= unmatchedTokens * 8;
+    }
+
+    // Prefer paths where the first matched token appears earlier.
+    // Example: `app/...` should beat `vendor/.../app/...` for query `app/...`.
+    if (firstMatchedSegIdx > 0) {
+      bestScore -= firstMatchedSegIdx * 4;
+    }
+
+    // Prefer tighter token spans (tokens close together in path structure).
+    if (firstMatchedSegIdx !== -1 && lastMatchedSegIdx !== -1) {
+      const span = lastMatchedSegIdx - firstMatchedSegIdx;
+      const minSpan = tokenMatchCount > 0 ? tokenMatchCount - 1 : 0;
+      const extraSpan = Math.max(0, span - minSpan);
+      if (extraSpan > 0) {
+        bestScore -= extraSpan * 2;
+      }
     }
   }
 
@@ -243,7 +275,7 @@ function fuzzyScore(lowerQuery, entry, queryHintsTest = false) {
   return bestScore;
 }
 
-function fuzzyFilterEntries(query, fileEntries, folderEntries, maxItems = 50) {
+function fuzzyFilterEntries(query, fileEntries, maxItems = 50) {
   const lowerQuery = query.toLowerCase();
   const queryHintsTest = /test|spec|__tests__/.test(lowerQuery);
   const scored = [];
@@ -256,21 +288,12 @@ function fuzzyFilterEntries(query, fileEntries, folderEntries, maxItems = 50) {
     }
   }
 
-  // Score all folders
-  for (const entry of folderEntries) {
-    const score = fuzzyScore(lowerQuery, entry, queryHintsTest);
-    if (score !== null) {
-      scored.push({ entry, score, isFile: false });
-    }
-  }
-
   // Single combined ranking with stable tie-break:
   // 1. Score (desc)
   // 2. Basename prefix match (desc)
-  // 3. File-over-folder for exact basename match
-  // 4. Depth (asc)
-  // 5. Path length (asc)
-  // 6. Lexicographic (asc)
+  // 3. Depth (asc)
+  // 4. Path length (asc)
+  // 5. Lexicographic (asc)
   scored.sort((a, b) => {
     // Primary: score descending
     if (a.score !== b.score) return b.score - a.score;
@@ -280,15 +303,10 @@ function fuzzyFilterEntries(query, fileEntries, folderEntries, maxItems = 50) {
     const bBasenamePrefix = b.entry.basename.startsWith(lowerQuery) ? 1 : 0;
     if (aBasenamePrefix !== bBasenamePrefix) return bBasenamePrefix - aBasenamePrefix;
 
-    // Tertiary: file-over-folder tie rule (only when basenames match exactly)
-    if (a.entry.basename === b.entry.basename && a.isFile !== b.isFile) {
-      return a.isFile ? -1 : 1;
-    }
-
-    // Quaternary: depth ascending (shallower first)
+    // Tertiary: depth ascending (shallower first)
     if (a.entry.depth !== b.entry.depth) return a.entry.depth - b.entry.depth;
 
-    // Quinary: path length ascending (shorter first)
+    // Quaternary: path length ascending (shorter first)
     const aLen = a.entry.lowerPath.length;
     const bLen = b.entry.lowerPath.length;
     if (aLen !== bLen) return aLen - bLen;
@@ -354,7 +372,7 @@ const fileMentionProvider = {
     const triggerChar = getConfig().get('triggerCharacter', '@');
     const lineText = document.lineAt(position.line).text;
     const beforeCursor = lineText.substring(0, position.character);
-    
+
     // Fix: use configurable trigger character in regex
     const escapedTrigger = triggerChar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const pattern = new RegExp(escapedTrigger + '([^\\s' + escapedTrigger + ']*)$');
@@ -405,28 +423,26 @@ const fileMentionProvider = {
     }
 
     // Query-based fuzzy filtering with combined ranking
-    const results = fuzzyFilterEntries(query, fileEntries, folderEntries);
+    const results = fuzzyFilterEntries(query, fileEntries);
 
-    const items = results.map(({ entry, score, isFile }, idx) => {
+    const items = results.map(({ entry }, idx) => {
       const item = new vscode.CompletionItem(
         entry.relativePath,
-        isFile ? vscode.CompletionItemKind.File : vscode.CompletionItemKind.Folder
+        vscode.CompletionItemKind.File
       );
       item.insertText = entry.relativePath;
       item.filterText = typedText;
       item.sortText = String(idx).padStart(4, '0');
-      item.detail = isFile ? 'file mention' : 'folder mention';
+      item.detail = 'file mention';
       item.range = replaceRange;
-      
+
       // Track selection for MRU
-      if (isFile) {
-        item.command = {
-          command: 'fileMention.trackSelection',
-          title: '',
-          arguments: [entry.relativePath]
-        };
-      }
-      
+      item.command = {
+        command: 'fileMention.trackSelection',
+        title: '',
+        arguments: [entry.relativePath]
+      };
+
       return item;
     });
 
@@ -439,7 +455,7 @@ let workspaceFolderChangeTimer = null;
 function registerFileMentionProvider(context) {
   extensionContext = context;
   mruList = loadMRU();
-  
+
   const triggerChar = getConfig().get('triggerCharacter', '@');
 
   // Register MRU tracking command
